@@ -14,6 +14,7 @@ class Booking(models.Model):
     playing_hours = models.CharField(max_length=50)
     status = models.BooleanField(default=False)
     booked_at = models.DateField(auto_now_add=True, blank=True, null=True)
+    court = models.CharField(max_length=10, default="1")
 
 
     @staticmethod

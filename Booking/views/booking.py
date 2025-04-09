@@ -34,6 +34,7 @@ class FutsalBooking(View):
             date = request.POST.get('date')
             time = request.POST.get('time')
             playing_hours = request.POST.get('playing_hours')
+            court = request.POST.get('court') 
             
             # Create booking object
             booking = Booking(
@@ -44,7 +45,8 @@ class FutsalBooking(View):
                 address=address,
                 date=date,
                 time=time,
-                playing_hours=playing_hours
+                playing_hours=playing_hours,
+                court=court,
             )
             
             # Validate booking
@@ -162,8 +164,9 @@ def check_availability(request):
             
             for booking in bookings:
                 booked_slots.append({
-                    'court': str(booking.court_type) if hasattr(booking, 'court_type') else '1',
-                    'time': booking.time.strftime('%H:%M') if booking.time else ''
+                    'court': str(booking.court) if hasattr(booking, 'court') else '1',
+                    'time': booking.time.strftime('%H:%M') if booking.time else '',
+                    'playing_hour': str(booking.playing_hours) if hasattr(booking, 'playing_hours') else '1',
                 })
             
             return JsonResponse({
@@ -197,6 +200,7 @@ def booking_confirmation(request):
 def book_court(request):
     if request.method == 'POST':
         try:
+            print("POST Data Received:", request.POST)
             customer = Customer.objects.get(id=request.session.get('customer'))
             
             # Get booking details from POST data
@@ -207,15 +211,16 @@ def book_court(request):
             booking_date = request.POST.get('date')
             time_slot = request.POST.get('time')
             playing_hours = request.POST.get('playing_hours', 1)
+            court = request.POST.get('court')
             
             # Convert time from 12-hour to 24-hour format
             time_obj = datetime.strptime(time_slot, '%I:%M %p').time()
             
-            # Check if slot is already booked
-            if Booking.objects.filter(date=booking_date, time=time_obj).exists():
+            # Check if the specific court and timeslot is already booked
+            if Booking.objects.filter(date=booking_date, time=time_obj, court=court).exists():
                 return JsonResponse({
                     'success': False,
-                    'error': 'This time slot is already booked.'
+                    'error': 'This time slot for the selected court is already booked.'
                 })
             
             # Create booking
@@ -227,7 +232,8 @@ def book_court(request):
                 address=address,
                 date=booking_date,
                 time=time_obj,
-                playing_hours=playing_hours
+                playing_hours=playing_hours,
+                court=court,
             )
             
             # Save booking

@@ -495,211 +495,298 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
         }
+        .time-slot {
+    text-align: center;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.time-slot:hover:not(.sold-out):not(.disabled) {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.time-slot.selected {
+    background: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+
+.time-slot.sold-out {
+    background: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+    opacity: 0.8;
+    cursor: not-allowed;
+    position: relative;
+}
+.time-slot.sold-out {
+    background-color: #dc3545 !important; /* Bootstrap red */
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
     </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Get all time slots
-            const timeSlots = document.querySelectorAll('.time-slot');
-            let selectedSlot = null;
-            const proceedButton = document.getElementById('proceedToBook');
-            const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
-            const dateInput = document.getElementById('bookingDate');
+<script>document.addEventListener('DOMContentLoaded', function() {
+    // Get all time slots
+    const timeSlots = document.querySelectorAll('.time-slot');
+    let selectedSlot = null;
+    const proceedButton = document.getElementById('proceedToBook');
+    const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+    const dateInput = document.getElementById('bookingDate');
 
-            // Set default date to today
-            const today = new Date();
-            const formattedDate = today.toISOString().split('T')[0];
-            dateInput.value = formattedDate;
+    // Set default date to today
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0];
+    dateInput.value = formattedDate;
 
-            // Function to check availability and mark booked slots
-            function checkAvailability() {
-                const selectedDate = dateInput.value;
-                console.log('Checking availability for date:', selectedDate);
-                
-                fetch(`/check-availability/?date=${selectedDate}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            console.log('Received booked slots:', data.booked_slots);
-                            
-                            // Reset all slots to available first
-                            timeSlots.forEach(slot => {
-                                slot.classList.remove('sold-out');
-                                slot.disabled = false;
-                            });
+    // Function to check availability and mark booked slots
+    function checkAvailability() {
+        const selectedDate = dateInput.value;
+        console.log('Checking availability for date:', selectedDate);
+        
+        // Reset all slots to available first
+        timeSlots.forEach(slot => {
+            slot.classList.remove('sold-out');
+            slot.classList.remove('selected');
+            slot.disabled = false;
+        });
 
-                            // Mark booked slots as sold-out
-                            data.booked_slots.forEach(bookedSlot => {
-                                console.log('Processing booked slot:', bookedSlot);
-                                timeSlots.forEach(slot => {
-                                    if (slot.dataset.court === bookedSlot.court && 
-                                        slot.textContent === bookedSlot.time) {
-                                        console.log('Found match - marking as sold out');
-                                        slot.classList.add('sold-out');
-                                        slot.disabled = true;
-                                    }
-                                });
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error checking availability:', error);
+        // In a real application, you would use fetch instead of the sample data:
+        fetch(`/check-availability/?date=${selectedDate}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Received booked slots:', data.booked_slots);
+                    
+                    // Reset all slots to available first
+                    timeSlots.forEach(slot => {
+                        slot.classList.remove('sold-out');
+                        slot.classList.remove('selected');
                     });
-            }
 
-            // Check availability when date changes
-            dateInput.addEventListener('change', checkAvailability);
+                    // Mark booked slots as sold-out
+// Mark booked slots as sold-out and disable them
+// Mark booked slots as sold-out and disable them
+data.booked_slots.forEach(bookedSlot => {
+    console.log('Processing booked slot:', bookedSlot);
+    const bookedTimeFormatted = convertTo12Hour(bookedSlot.time);
+    timeSlots.forEach(slot => {
+        if (slot.textContent.trim() === bookedTimeFormatted && slot.dataset.court === bookedSlot.court) {
+            console.log('Found match - marking as sold out');
+            slot.classList.add('sold-out'); // For red styling
+            slot.disabled = true; // Prevent clicking
+        }
+    });
+});
 
-            // Check availability on page load
-            checkAvailability();
+function convertTo12Hour(time24) {
+    const [hour, minute] = time24.split(':').map(Number);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = ((hour + 11) % 12 + 1);
+    return `${hour12.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${period}`;
+}
 
-            // Check availability every 30 seconds
-            setInterval(checkAvailability, 30000);
-
-            // Handle time slot selection
-            timeSlots.forEach(slot => {
-                slot.addEventListener('click', function() {
-                    if (!this.classList.contains('sold-out') && !this.classList.contains('disabled')) {
-                        // Remove selected class from previously selected slot
-                        if (selectedSlot) {
-                            selectedSlot.classList.remove('selected');
-                        }
-                        // Add selected class to clicked slot
-                        this.classList.add('selected');
-                        selectedSlot = this;
-                        if (proceedButton) {
-                            proceedButton.disabled = false;
-                        }
-
-                        // Update hidden form fields and modal content
-                        const timeSlotInput = document.getElementById('timeSlot');
-                        const selectedCourtElement = document.getElementById('selectedCourt');
-                        const selectedTimeElement = document.getElementById('selectedTime');
-                        const selectedDateElement = document.getElementById('selectedDate');
-                        
-                        if (timeSlotInput) {
-                            timeSlotInput.value = this.textContent;
-                        }
-
-                        if (selectedCourtElement && selectedTimeElement && selectedDateElement) {
-                            const courtTypes = {
-                                '1': 'Gold Court',
-                                '2': 'Silver Court',
-                                '3': 'Bronze Court'
-                            };
-                            selectedCourtElement.textContent = `${courtTypes[this.dataset.court]} (Court ${this.dataset.court})`;
-                            selectedTimeElement.textContent = this.textContent;
-                            selectedDateElement.textContent = new Date(dateInput.value).toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                            });
-                        }
-                        
-                        // Update price immediately when slot is selected
-                        updatePrice();
-                    }
-                });
+                }
+            })
+            .catch(error => {
+                console.error('Error checking availability:', error);
             });
+    }
 
-            // Court prices per hour
-            const courtPrices = {
-                '1': 1500, // Premium Court
-                '2': 1300, // Gold Court
-                '3': 1000  // Silver Court
-            };
+    // Check availability when date changes
+    dateInput.addEventListener('change', checkAvailability);
 
-            function updatePrice() {
-                if (!selectedSlot) return;
+    // Check availability on page load
+    checkAvailability();
 
-                const pricePerHourElement = document.getElementById('pricePerHour');
-                const displayPlayingHoursElement = document.getElementById('displayPlayingHours');
-                const totalPriceElement = document.getElementById('totalPrice');
-                const playingHoursSelect = document.getElementById('playingHours');
+    // Check availability every 30 seconds
+    setInterval(checkAvailability, 30000);
 
-                if (!pricePerHourElement || !displayPlayingHoursElement || !totalPriceElement || !playingHoursSelect) return;
-
-                const courtType = selectedSlot.dataset.court;
-                const pricePerHour = courtPrices[courtType];
-                const hours = parseInt(playingHoursSelect.value);
-                const totalPrice = pricePerHour * hours;
-
-                // Update the display
-                pricePerHourElement.textContent = `Rs. ${pricePerHour}`;
-                displayPlayingHoursElement.textContent = `${hours} Hour${hours > 1 ? 's' : ''}`;
-                totalPriceElement.textContent = `Rs. ${totalPrice}`;
+    // Handle time slot selection
+    timeSlots.forEach(slot => {
+        slot.addEventListener('click', function() {
+            // First check if this slot is sold-out/booked
+            if (this.classList.contains('sold-out')) {
+                console.log('This slot is already booked');
+                return; // Exit the function early - no further action for booked slots
             }
+            
+            if (!this.classList.contains('disabled')) {
+                // Remove selected class from previously selected slot
+                if (selectedSlot) {
+                    selectedSlot.classList.remove('selected');
+                }
+                // Add selected class to clicked slot
+                this.classList.add('selected');
+                selectedSlot = this;
+                if (proceedButton) {
+                    proceedButton.disabled = false;
+                }
 
-            // Add event listener for playing hours change
-            const playingHoursSelect = document.getElementById('playingHours');
-            if (playingHoursSelect) {
-                playingHoursSelect.addEventListener('change', updatePrice);
-            }
+                // Update hidden form fields and modal content
+                const timeSlotInput = document.getElementById('timeSlot');
+                const selectedCourtElement = document.getElementById('selectedCourt');
+                const selectedTimeElement = document.getElementById('selectedTime');
+                const selectedDateElement = document.getElementById('selectedDate');
+                const bookingDateInput = document.getElementById('bookingDateInput');
+                
+                if (timeSlotInput) {
+                    timeSlotInput.value = this.textContent;
+                }
+                
+                if (bookingDateInput) {
+                    bookingDateInput.value = dateInput.value;
+                }
 
-            if (proceedButton) {
-                proceedButton.addEventListener('click', function() {
-                    if (selectedSlot && bookingModal) {
-                        bookingModal.show();
-                    }
-                });
-            }
-
-            // Form submission
-            const bookingForm = document.getElementById('bookingForm');
-            if (bookingForm) {
-                bookingForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    
-                    if (!selectedSlot) {
-                        alert('Please select a time slot');
-                        return;
-                    }
-                    
-                    // Get CSRF token
-                    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-                    
-                    // Create form data
-                    const formData = new FormData(this);
-                    formData.append('time', selectedSlot.textContent.trim());
-                    formData.append('date', dateInput.value);
-                    formData.append('email', '{{ customer.email }}');
-                    formData.append('phone', '{{ customer.phone }}');
-                    formData.append('fullname', '{{ customer.first_name }} {{ customer.last_name }}');
-                    formData.append('address', '{{ customer.address|default:"" }}');
-                    
-                    // Send booking request
-                    fetch('/book/', {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-CSRFToken': csrftoken
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Mark the slot as sold out immediately after successful booking
-                            selectedSlot.classList.add('sold-out');
-                            selectedSlot.disabled = true;
-                            selectedSlot.classList.remove('selected');
-                            
-                            alert('Booking successful!');
-                            window.location.href = '/booking-confirmation/';
-                        } else {
-                            alert(data.error || 'Booking failed. Please try again.');
-                            if (data.error === 'Please login to make a booking') {
-                                window.location.href = '/login';
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('An error occurred. Please try again.');
+                if (selectedCourtElement && selectedTimeElement && selectedDateElement) {
+                    const courtTypes = {
+                        '1': 'Premium Court',
+                        '2': 'Gold Court',
+                        '3': 'Silver Court'
+                    };
+                    selectedCourtElement.textContent = `${courtTypes[this.dataset.court]} (Court ${this.dataset.court})`;
+                    selectedTimeElement.textContent = this.textContent;
+                    selectedDateElement.textContent = new Date(dateInput.value).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
                     });
-                });
+                }
+                
+                // Update price immediately when slot is selected
+                updatePrice();
             }
         });
-    </script>
+    });
+
+    // Court prices per hour
+    const courtPrices = {
+        '1': 1500, // Premium Court
+        '2': 1300, // Gold Court
+        '3': 1000  // Silver Court
+    };
+
+    function updatePrice() {
+        if (!selectedSlot) return;
+
+        const pricePerHourElement = document.getElementById('pricePerHour');
+        const displayPlayingHoursElement = document.getElementById('displayPlayingHours');
+        const totalPriceElement = document.getElementById('totalPrice');
+        const playingHoursSelect = document.getElementById('playingHours');
+
+        if (!pricePerHourElement || !displayPlayingHoursElement || !totalPriceElement || !playingHoursSelect) return;
+
+        const courtType = selectedSlot.dataset.court;
+        const pricePerHour = courtPrices[courtType];
+        const hours = parseInt(playingHoursSelect.value);
+        const totalPrice = pricePerHour * hours;
+
+        // Update the display
+        pricePerHourElement.textContent = `Rs. ${pricePerHour}`;
+        displayPlayingHoursElement.textContent = `${hours} Hour${hours > 1 ? 's' : ''}`;
+        totalPriceElement.textContent = `Rs. ${totalPrice}`;
+    }
+
+    // Add event listener for playing hours change
+    const playingHoursSelect = document.getElementById('playingHours');
+    if (playingHoursSelect) {
+        playingHoursSelect.addEventListener('change', updatePrice);
+    }
+
+    if (proceedButton) {
+        proceedButton.addEventListener('click', function() {
+            if (selectedSlot && bookingModal) {
+                bookingModal.show();
+            }
+        });
+    }
+
+    // Form submission
+    const bookingForm = document.getElementById('bookingForm');
+if (bookingForm) {
+    bookingForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!selectedSlot) {
+            alert('Please select a time slot');
+            return;
+        }
+        
+        // Check if the slot is already booked (double-check)
+        if (selectedSlot.classList.contains('sold-out')) {
+            alert('This slot has just been booked by someone else. Please select another time slot.');
+            return;
+        }
+        
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Create form data
+        const formData = new FormData(this);
+        formData.append('time', selectedSlot.textContent.trim());
+        formData.append('date', dateInput.value);
+        formData.append('court', selectedSlot.dataset.court);  // Add selected court to form data
+
+        // Log the fields being sent
+        console.log('Sending form data:');
+        formData.forEach((value, key) => {
+            console.log(key + ': ' + value);
+        });
+
+        console.log('Selected slot:', selectedSlot.textContent.trim());
+
+        // Send booking request
+        fetch('/book/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Booking successful:', data);
+                // Mark the slot as sold out immediately after successful booking
+                selectedSlot.classList.add('sold-out');
+                selectedSlot.classList.remove('selected');
+                selectedSlot = null;
+                proceedButton.disabled = true;
+                
+                alert('Booking successful!');
+                window.location.href = '/booking-confirmation/';
+            } else {
+                alert(data.error || 'Booking failed. Please try again.');
+                if (data.error === 'Please login to make a booking') {
+                    window.location.href = '/login';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        });
+    });
+}
+
+            
+            // For demo purposes, simulate a successful booking
+            // selectedSlot.classList.add('sold-out');
+            // selectedSlot.classList.remove('selected');
+            // selectedSlot = null;
+            // proceedButton.disabled = true;
+            // bookingModal.hide();
+            // alert('Booking successful! (Demo mode)');
+});</script>
 </head>
 <body>
     <div class="booking-container">
