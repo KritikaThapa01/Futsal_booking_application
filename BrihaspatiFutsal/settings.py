@@ -149,8 +149,7 @@ JAZZMIN_SETTINGS = {
     "site_logo_classes": "img-circle",
     "site_icon": "futsallogofortitle.png",
 
-     "hide_models": [
-        "Booking.Tournamentregister", 
+     "hide_models": [ 
         "Shopping.Profile",
     ],
 }
