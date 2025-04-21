@@ -151,6 +151,6 @@ JAZZMIN_SETTINGS = {
 
      "hide_models": [
         "Booking.Tournamentregister", 
-        "Shopping.Profile",
+
     ],
 }
